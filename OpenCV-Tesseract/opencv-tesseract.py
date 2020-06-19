@@ -26,7 +26,7 @@ def preprocessing(frame):
     # Detect Edges on the image
     edges = auto_canny(frame)
     # Find all the contours i.e. all clossed lines
-    _, cnts, _ = cv2.findContours(edges.copy(), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+    cnts, _ = cv2.findContours(edges.copy(), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
     # Narrow down the number of contours to places where is it most populated
     cnts = sorted(cnts, key=cv2.contourArea, reverse=True)[:30]
     for ctr in cnts:
@@ -64,22 +64,25 @@ def main():
     while(cap.isOpened()):
         # Read each frame where ret is a return boollean value(True or False)
         ret, frame = cap.read()
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY) # Convert the frame to gray scale
-        # Send the frame for preprocessing to get bounding box and the plate_numbers
-        x, y, w, h,avail,plate_number = preprocessing(gray)
-        frame_copy = frame.copy()
-        if avail:
-            # Draw a rectangle from the extracted coordinates above
-            cv2.rectangle(frame_copy, (x, y), (x + w, y + h), (255, 0, 255), 2)
-            # Put a text above the rectangle where text is the output from pytesseract
-            cv2.putText(frame_copy, str(plate_number), (x, y), font, 0.7, (255, 0, 255), 2, cv2.LINE_AA)
-        
-        # cv2.imshow('frame',frame_copy)
-        out_video.write(frame_copy) # write the modifies frame into output video 
-        # to forcefully stop the running loop and break out, if it doesnt work use ctlr+c
-        if cv2.waitKey(1) & 0xFF == ord('q'):
+        if ret:
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY) # Convert the frame to gray scale
+            # Send the frame for preprocessing to get bounding box and the plate_numbers
+            x, y, w, h,avail,plate_number = preprocessing(gray)
+            frame_copy = frame.copy()
+            if avail:
+                # Draw a rectangle from the extracted coordinates above
+                cv2.rectangle(frame_copy, (x, y), (x + w, y + h), (255, 0, 255), 2)
+                # Put a text above the rectangle where text is the output from pytesseract
+                cv2.putText(frame_copy, str(plate_number), (x, y), font, 0.7, (255, 0, 255), 2, cv2.LINE_AA)
+            
+            # cv2.imshow('frame',frame_copy)
+            out_video.write(frame_copy) # write the modifies frame into output video 
+            # to forcefully stop the running loop and break out, if it doesnt work use ctlr+c
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
+        else:
             break
-    
+        
     print('Time taken to run through the whole video is {}s'.format(time() - start))
     # Release the current
     cap.release()
