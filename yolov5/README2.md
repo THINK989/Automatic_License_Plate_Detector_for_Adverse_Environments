@@ -12,7 +12,7 @@ more on README.md
 
 For detecting/testing on custom video or image use 
 ```
-python detect.py --source test.mp4 --weights ./weight/last.pt --show-img
+python detect.py --source test.mp4 --weights ./weight/licplate.pt --show-img
 ```
 again more on README.md
 
