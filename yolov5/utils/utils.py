@@ -20,7 +20,7 @@ import yaml
 from scipy.signal import butter, filtfilt
 from tqdm import tqdm
 
-from . import torch_utils, google_utils  #  torch_utils, google_utils
+from . import torch_utils  #  torch_utils, google_utils
 
 # Set printoptions
 torch.set_printoptions(linewidth=320, precision=5, profile='long')
@@ -47,7 +47,7 @@ def check_git_status():
 
 def check_img_size(img_size, s=32):
     # Verify img_size is a multiple of stride s
-    new_size = make_divisible(img_size, s)  # ceil gs-multiple
+    new_size = make_divisible(img_size, int(s))  # ceil gs-multiple
     if new_size != img_size:
         print('WARNING: --img-size %g must be multiple of max stride %g, updating to %g' % (img_size, s, new_size))
     return new_size
@@ -58,7 +58,8 @@ def check_anchors(dataset, model, thr=4.0, imgsz=640):
     print('\nAnalyzing anchors... ', end='')
     m = model.module.model[-1] if hasattr(model, 'module') else model.model[-1]  # Detect()
     shapes = imgsz * dataset.shapes / dataset.shapes.max(1, keepdims=True)
-    wh = torch.tensor(np.concatenate([l[:, 3:5] * s for s, l in zip(shapes, dataset.labels)])).float()  # wh
+    scale = np.random.uniform(0.9, 1.1, size=(shapes.shape[0], 1))  # augment scale
+    wh = torch.tensor(np.concatenate([l[:, 3:5] * s for s, l in zip(shapes * scale, dataset.labels)])).float()  # wh
 
     def metric(k):  # compute metric
         r = wh[:, None] / k[None]
@@ -77,10 +78,21 @@ def check_anchors(dataset, model, thr=4.0, imgsz=640):
             new_anchors = torch.tensor(new_anchors, device=m.anchors.device).type_as(m.anchors)
             m.anchor_grid[:] = new_anchors.clone().view_as(m.anchor_grid)  # for inference
             m.anchors[:] = new_anchors.clone().view_as(m.anchors) / m.stride.to(m.anchors.device).view(-1, 1, 1)  # loss
+            check_anchor_order(m)
             print('New anchors saved to model. Update model *.yaml to use these anchors in the future.')
         else:
             print('Original anchors better than new anchors. Proceeding with original anchors.')
     print('')  # newline
+
+
+def check_anchor_order(m):
+    # Check anchor order against stride order for YOLOv5 Detect() module m, and correct if necessary
+    a = m.anchor_grid.prod(-1).view(-1)  # anchor area
+    da = a[-1] - a[0]  # delta a
+    ds = m.stride[-1] - m.stride[0]  # delta s
+    if da.sign() != ds.sign():  # same order
+        m.anchors[:] = m.anchors.flip(0)
+        m.anchor_grid[:] = m.anchor_grid.flip(0)
 
 
 def check_file(file):
@@ -425,7 +437,9 @@ def compute_loss(p, targets, model):  # predictions, targets, model
         BCEcls, BCEobj = FocalLoss(BCEcls, g), FocalLoss(BCEobj, g)
 
     # per output
-    nt = 0  # targets
+    nt = 0  # number of targets
+    np = len(p)  # number of outputs
+    balance = [1.0, 1.0, 1.0]
     for i, pi in enumerate(p):  # layer index, layer predictions
         b, a, gj, gi = indices[i]  # image, anchor, gridy, gridx
         tobj = torch.zeros_like(pi[..., 0])  # target obj
@@ -455,11 +469,12 @@ def compute_loss(p, targets, model):  # predictions, targets, model
             # with open('targets.txt', 'a') as file:
             #     [file.write('%11.5g ' * 4 % tuple(x) + '\n') for x in torch.cat((txy[i], twh[i]), 1)]
 
-        lobj += BCEobj(pi[..., 4], tobj)  # obj loss
+        lobj += BCEobj(pi[..., 4], tobj) * balance[i]  # obj loss
 
-    lbox *= h['giou']
-    lobj *= h['obj']
-    lcls *= h['cls']
+    s = 3 / np  # output count scaling
+    lbox *= h['giou'] * s
+    lobj *= h['obj'] * s
+    lcls *= h['cls'] * s
     bs = tobj.shape[0]  # batch size
     if red == 'sum':
         g = 3.0  # loss gain
@@ -496,16 +511,14 @@ def build_targets(p, targets, model):
             a, t = at[j], t.repeat(na, 1, 1)[j]  # filter
 
             # overlaps
+            g = 0.5  # offset
             gxy = t[:, 2:4]  # grid xy
             z = torch.zeros_like(gxy)
             if style == 'rect2':
-                g = 0.2  # offset
                 j, k = ((gxy % 1. < g) & (gxy > 1.)).T
                 a, t = torch.cat((a, a[j], a[k]), 0), torch.cat((t, t[j], t[k]), 0)
                 offsets = torch.cat((z, z[j] + off[0], z[k] + off[1]), 0) * g
-
             elif style == 'rect4':
-                g = 0.5  # offset
                 j, k = ((gxy % 1. < g) & (gxy > 1.)).T
                 l, m = ((gxy % 1. > (1 - g)) & (gxy < (gain[[2, 3]] - 1.))).T
                 a, t = torch.cat((a, a[j], a[k], a[l], a[m]), 0), torch.cat((t, t[j], t[k], t[l], t[m]), 0)
@@ -527,7 +540,7 @@ def build_targets(p, targets, model):
     return tcls, tbox, indices, anch
 
 
-def non_max_suppression(prediction, conf_thres=0.1, iou_thres=0.6, fast=False, classes=None, agnostic=False):
+def non_max_suppression(prediction, conf_thres=0.1, iou_thres=0.6, merge=False, classes=None, agnostic=False):
     """Performs Non-Maximum Suppression (NMS) on inference results
 
     Returns:
@@ -544,12 +557,7 @@ def non_max_suppression(prediction, conf_thres=0.1, iou_thres=0.6, fast=False, c
     max_det = 300  # maximum number of detections per image
     time_limit = 10.0  # seconds to quit after
     redundant = True  # require redundant detections
-    fast |= conf_thres > 0.001  # fast mode
     multi_label = nc > 1  # multiple labels per box (adds 0.5ms/img)
-    if fast:
-        merge = False
-    else:
-        merge = True  # merge for best mAP (adds 0.5ms/img)
 
     t = time.time()
     output = [None] * prediction.shape[0]
@@ -625,8 +633,8 @@ def strip_optimizer(f='weights/best.pt'):  # from utils.utils import *; strip_op
     print('Optimizer stripped from %s' % f)
 
 
-def create_backbone(f='weights/best.pt', s='weights/backbone.pt'):  # from utils.utils import *; create_backbone()
-    # create backbone 's' from 'f'
+def create_pretrained(f='weights/best.pt', s='weights/pretrained.pt'):  # from utils.utils import *; create_pretrained()
+    # create pretrained checkpoint 's' from 'f' (create_pretrained(x, x) for x in glob.glob('./*.pt'))
     device = torch.device('cpu')
     x = torch.load(s, map_location=device)
 
@@ -637,7 +645,7 @@ def create_backbone(f='weights/best.pt', s='weights/backbone.pt'):  # from utils
     for p in x['model'].parameters():
         p.requires_grad = True
     torch.save(x, s)
-    print('%s modified for backbone use and saved as %s' % (f, s))
+    print('%s saved as pretrained checkpoint %s' % (f, s))
 
 
 def coco_class_count(path='../coco/labels/train2014/'):
@@ -757,11 +765,11 @@ def kmean_anchors(path='./data/coco128.yaml', n=9, img_size=640, thr=4.0, gen=10
     wh0 = np.concatenate([l[:, 3:5] * s for s, l in zip(shapes, dataset.labels)])  # wh
 
     # Filter
-    i = (wh0 < 4.0).any(1).sum()
+    i = (wh0 < 3.0).any(1).sum()
     if i:
         print('WARNING: Extremely small objects found. '
-              '%g of %g labels are < 4 pixels in width or height.' % (i, len(wh0)))
-    wh = wh0[(wh0 >= 4.0).any(1)]  # filter > 2 pixels
+              '%g of %g labels are < 3 pixels in width or height.' % (i, len(wh0)))
+    wh = wh0[(wh0 >= 2.0).any(1)]  # filter > 2 pixels
 
     # Kmeans calculation
     from scipy.cluster.vq import kmeans
@@ -1087,12 +1095,14 @@ def plot_study_txt(f='study.txt', x=None):  # from utils.utils import *; plot_st
 
     ax2.plot(1E3 / np.array([209, 140, 97, 58, 35, 18]), [33.5, 39.1, 42.5, 45.9, 49., 50.5],
              'k.-', linewidth=2, markersize=8, alpha=.25, label='EfficientDet')
+
+    ax2.grid()
     ax2.set_xlim(0, 30)
-    ax2.set_ylim(25, 50)
-    ax2.set_xlabel('GPU Latency (ms)')
+    ax2.set_ylim(28, 50)
+    ax2.set_yticks(np.arange(30, 55, 5))
+    ax2.set_xlabel('GPU Speed (ms/img)')
     ax2.set_ylabel('COCO AP val')
     ax2.legend(loc='lower right')
-    ax2.grid()
     plt.savefig('study_mAP_latency.png', dpi=300)
     plt.savefig(f.replace('.txt', '.png'), dpi=200)
 
