@@ -20,7 +20,8 @@ if __name__ == '__main__':
 
     # Parameters
     f = opt.weights.replace('.pt', '.onnx')  # onnx filename
-    img = torch.zeros((opt.batch_size, 3, *opt.img_size))  # image size, (1, 3, 320, 192) iDetection
+    img_size =  opt.img_size
+    img = torch.zeros((opt.batch_size, 3, img_size[0],img_size[1]))  # image size, (1, 3, 320, 192) iDetection
 
     # Load pytorch model
     google_utils.attempt_download(opt.weights)
