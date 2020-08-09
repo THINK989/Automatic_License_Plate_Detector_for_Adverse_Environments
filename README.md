@@ -17,20 +17,20 @@ environment.
 
 #### System Specification:-
 
-| Description | Specifications |
-|:------------:|:---------------: | 
-|Processor   | Intel(R) Core(TM) i5-8300H CPU @ 2.30GHz, 2304 Mhz, 4 Core(s), 8 Logical Processor(s) |
-|RAM         | 16GB |
-|Operating System | Windows 10 Home |
-|GPU         | NVIDIA GeForce GTX 1050 4GB |
-|CUDA        | 10.2 |
+|   Description    |                                    Specifications                                     |
+| :--------------: | :-----------------------------------------------------------------------------------: |
+|    Processor     | Intel(R) Core(TM) i5-8300H CPU @ 2.30GHz, 2304 Mhz, 4 Core(s), 8 Logical Processor(s) |
+|       RAM        |                                         16GB                                          |
+| Operating System |                                    Windows 10 Home                                    |
+|       GPU        |                              NVIDIA GeForce GTX 1050 4GB                              |
+|       CUDA       |                                         10.2                                          |
 
 #### Detector Model Performance
 
-| Model | Precision | Recall | mAP@0.5 | mAP@.5:.95 | FPS<sub>MYSPECS</sub> | params | 
-| :----------: | :------: | :------: |:------: | :--------: | :------: | :------: | :------:  |  :------: |
-| YOLOv5-s ([ckpt](https://drive.google.com/drive/folders/1mK8vSS7bcvb-qREqdKwkM6qlK71sjp0-?usp=sharing))    | 0.7536 | 0.9864 | 0.9742 | 0.73 | 45 | 7.1M   | 
-| YOLOv5-m ([ckpt](https://drive.google.com/drive/folders/1mK8vSS7bcvb-qREqdKwkM6qlK71sjp0-?usp=sharing))    | 0.7851 | 0.964  | 0.9672 | 0.7297  | 35 | 22.0M  | 
+| Model                                                                                                   | Precision | Recall | mAP@0.5 | mAP@.5:.95 | FPS<sub>MYSPECS</sub> | params |
+| ------------------------------------------------------------------------------------------------------- | --------- | ------ | ------- | ---------- | --------------------- | ------ |
+| YOLOv5-s ([ckpt](https://drive.google.com/drive/folders/1mK8vSS7bcvb-qREqdKwkM6qlK71sjp0-?usp=sharing)) | 0.7536    | 0.9864 | 0.9742  | 0.73       | 45                    | 7.1M   |
+| YOLOv5-m ([ckpt](https://drive.google.com/drive/folders/1mK8vSS7bcvb-qREqdKwkM6qlK71sjp0-?usp=sharing)) | 0.7851    | 0.964  | 0.9672  | 0.7297     | 35                    | 22.0M  |
 
 Detector models specified above are FP16 models due to which they are small in size and can be deployed in any devices. Models performance can be further improved by training the pretrained weights on more application specific data. With that the models are still open to improvements.
  
