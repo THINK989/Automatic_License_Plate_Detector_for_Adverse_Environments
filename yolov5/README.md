@@ -41,6 +41,7 @@ $ python detect.py --source file.jpg  # image
 | Yolov5-s | Yolov5-m |
 | :------: | :-------:|
 | ![](imgs/results_small.png) | ![](imgs/results_medium.png) |
+
 ![](imgs/labels.png) 
 
 
