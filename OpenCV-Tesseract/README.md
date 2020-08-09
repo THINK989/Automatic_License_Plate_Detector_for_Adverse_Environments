@@ -8,7 +8,7 @@ Cropping such a rectangle and give it as an input to tesseract-OCR for convertin
 ## Get Started
 ---
 
-To run the script use
+To run the script 
 ```
 python opencv-tesseract.py
 ```
@@ -16,8 +16,8 @@ python opencv-tesseract.py
 ## Results
 ---
 
-It takes a lot of time to run on out input.mpg video provided in data folder . Specifically 3 min to process a 11 sec video for both license plate detection and
-recognition. Recognition accuracy is too less as well. The script only detects only 1 license plate per frame.
+It takes a lot of time to run on the input.mpg video provided in data folder . Specifically 3 min to process a 11 sec video for both license plate detection and
+recognition. Recognition accuracy is too less as well. The script only detects only 1 license plate per frame. There are better approaches using OpenCV, but i will stick to this one.
 
 
 

@@ -2,7 +2,7 @@
 An old unreliable approach which requires a lot of hand engineering
 And even after spending time on it for a lont time, It might not work as expected
 Note:- This script will only provide 1 bounding box per frame. 
-To allow multiple bbox changes are to made in preprocessing function by using lists of list 
+To allow multiple bbox changes are to be made in preprocessing function by using lists of list 
 instead of sigle coordinates
 """
 import cv2
