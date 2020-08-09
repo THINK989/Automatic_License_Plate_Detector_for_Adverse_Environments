@@ -47,3 +47,7 @@ environment.
 
 Detector models specified above are FP16 models due to which they are small in size and can be deployed in any devices. Models performance can be further improved by training the pretrained weights on more application specific data. With that the models are still open to improvements.
  
+### TODO
+
+- [ ] Adding IR files of the model 
+- [ ] Adding a fast and reliable recognition model 
