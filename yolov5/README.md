@@ -16,13 +16,13 @@ Get the models from [here](https://drive.google.com/drive/folders/1mK8vSS7bcvb-q
 
 To train the model use this 
 ```bash
-$ python train.py --img 640 --batch 16 --epochs 10 --data ./data.yaml --cfg ./models/yolov5s.yaml --weights ./weights/yolov5s.pt
+$ python train.py --img 640 --batch 16 --epochs 10 --data ./data.yaml --cfg ./models/yolov5s.yaml --weights ./weights/best_licplate_small.pt
 ```
 
 
 For detecting/testing on custom video or image use 
 ```bash
-$ python detect.py --source test.mp4 --weights ./weight/licplate.pt --show-img
+$ python detect.py --source test.mp4 --weights ./weight/best_licplate_medium.pt --show-img
 ```
 or any of your choice of source
 ```bash
@@ -41,6 +41,7 @@ $ python detect.py --source file.jpg  # image
 | Yolov5-s | Yolov5-m |
 | :------: | :-------:|
 | ![](imgs/results_small.png) | ![](imgs/results_medium.png) |
+
 ![](imgs/labels.png) 
 
 
