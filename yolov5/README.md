@@ -22,7 +22,7 @@ $ python train.py --img 640 --batch 16 --epochs 10 --data ./data.yaml --cfg ./mo
 
 For detecting/testing on custom video or image use 
 ```bash
-$ python detect.py --source test.mp4 --weights ./weight/best_licplate_medium.pt --show-img
+$ python detect.py --source test.mp4 --weights ./weights/best_licplate_medium.pt --view-img
 ```
 or any of your choice of source
 ```bash
